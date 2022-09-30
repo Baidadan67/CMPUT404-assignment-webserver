@@ -1,5 +1,6 @@
 #  coding: utf-8 
 import socketserver
+from urllib import response
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -31,9 +32,50 @@ class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
         self.data = self.request.recv(1024).strip()
-        print ("Got a request of: %s\n" % self.data)
+        # print ("Got a request of: %s\n" % self.data)
+         
+        self.data = self.data.decode('utf-8')
+        d = self.data.split(' ')
+        # print(d[1])
+        if d[0] != 'GET':
+            self.not_allowed()
+             
+        else:
+            self.valid_method(d[1])
+        
         self.request.sendall(bytearray("OK",'utf-8'))
+    
+    def not_allowed(self):
+        response = 'HTTP/1.1 405 Method Not Allowed\r\n'
+        self.request.send(response.encode('utf-8'))
+    
+    def valid_method(self, path):  
+        if path[-1] != '/' and path[-4: ] != 'html' and path[-3: ]!= 'css': 
+            self.redirect(path)
+        elif path[-1] == '/':
+            path += 'index.html'  
+ 
+        try:
+            file = open(f'./www{path}', 'r') 
+            data = file.read()
+            file.close()
+        except:
+            headers = f'HTTP/1.1 404 Not Found\r\n'  
+            self.request.send(headers.encode('utf-8'))
+            return
+        
+        content_type =  path[-4:].split('.')[0] or path[-4:].split('.')[1] 
+        headers = f'HTTP/1.1 200 OK\r\nContent-Type:text/{content_type}\r\nContent-Length:{len(data)}\r\n\r\n{data}'
 
+        self.request.send(headers.encode('utf-8'))
+         
+    
+    def redirect(self, path): 
+         
+        response = f'HTTP/1.1 301 Moved Permanently\r\nLocation:{path+"/"}\r\n' 
+        self.request.send(response.encode('utf-8'))
+        
+        
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
 
